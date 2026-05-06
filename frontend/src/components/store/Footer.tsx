@@ -40,10 +40,10 @@ export function Footer() {
           <div>
             <h3 className="mb-3 text-sm font-semibold">Support</h3>
             <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><span className="cursor-default">Help Center</span></li>
-              <li><span className="cursor-default">Shipping Policy</span></li>
-              <li><span className="cursor-default">Returns</span></li>
-              <li><span className="cursor-default">Contact Us</span></li>
+              <li><Link href="/help" className="hover:text-primary">Help Center</Link></li>
+              <li><Link href="/shipping-policy" className="hover:text-primary">Shipping Policy</Link></li>
+              <li><Link href="/returns" className="hover:text-primary">Returns</Link></li>
+              <li><Link href="/contact" className="hover:text-primary">Contact Us</Link></li>
             </ul>
           </div>
         </div>

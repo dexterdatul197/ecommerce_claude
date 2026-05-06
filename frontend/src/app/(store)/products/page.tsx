@@ -61,13 +61,22 @@ export default function ProductsPage() {
         </div>
 
         <Select value={category} onValueChange={(v) => updateParam('category', v === 'all' ? '' : v)}>
-          <SelectTrigger className="w-40">
+          <SelectTrigger className="w-44">
             <SelectValue placeholder="Category" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Categories</SelectItem>
             {categories.map((cat) => (
-              <SelectItem key={cat.id} value={cat.slug}>{cat.name}</SelectItem>
+              <>
+                <SelectItem key={cat.id} value={cat.slug} className="font-medium">
+                  {cat.name}
+                </SelectItem>
+                {cat.children?.map((child) => (
+                  <SelectItem key={child.id} value={child.slug} className="pl-6 text-muted-foreground">
+                    ↳ {child.name}
+                  </SelectItem>
+                ))}
+              </>
             ))}
           </SelectContent>
         </Select>

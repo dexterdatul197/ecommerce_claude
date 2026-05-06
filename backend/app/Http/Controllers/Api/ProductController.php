@@ -17,7 +17,10 @@ class ProductController extends Controller
             ->active();
 
         if ($request->filled('category')) {
-            $query->whereHas('category', fn($q) => $q->where('slug', $request->category));
+            $query->whereHas('category', function ($q) use ($request) {
+                $q->where('slug', $request->category)
+                  ->orWhereHas('parent', fn($p) => $p->where('slug', $request->category));
+            });
         }
 
         if ($request->filled('price_min')) {
@@ -30,6 +33,13 @@ class ProductController extends Controller
 
         if ($request->filled('featured')) {
             $query->featured();
+        }
+
+        if ($request->filled('search')) {
+            $query->where(function ($q) use ($request) {
+                $q->where('name', 'like', '%'.$request->search.'%')
+                  ->orWhere('short_description', 'like', '%'.$request->search.'%');
+            });
         }
 
         match ($request->get('sort', 'latest')) {

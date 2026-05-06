@@ -5,7 +5,7 @@ import { Plus, Pencil, Trash2, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Card, CardContent } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
@@ -180,7 +180,19 @@ export default function AdminProductsPage() {
               <Select value={form.category_id} onValueChange={(v) => setForm(f => ({ ...f, category_id: v }))}>
                 <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
                 <SelectContent>
-                  {categories.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
+                  {categories.map(c => (
+                    <SelectGroup key={c.id}>
+                      <SelectLabel className="text-xs font-semibold text-muted-foreground">{c.name}</SelectLabel>
+                      {c.children && c.children.length > 0
+                        ? c.children.map(child => (
+                            <SelectItem key={child.id} value={String(child.id)} className="pl-6">
+                              {child.name}
+                            </SelectItem>
+                          ))
+                        : <SelectItem value={String(c.id)}>{c.name}</SelectItem>
+                      }
+                    </SelectGroup>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
