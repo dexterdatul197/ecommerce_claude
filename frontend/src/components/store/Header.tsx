@@ -1,42 +1,28 @@
 'use client'
 import Link from 'next/link'
 import { useSession, signOut } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
-import { useState, useRef, useEffect } from 'react'
-import { ShoppingCart, User, Search, LogOut, Package, Settings, X } from 'lucide-react'
+import { useState } from 'react'
+import { ShoppingCart, User, Search, LogOut, Package, Settings, Heart } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { CartSheet } from '@/components/store/CartSheet'
+import { SearchAutocomplete } from '@/components/store/SearchAutocomplete'
 import { useCartStore } from '@/store/cart'
+import { useWishlist } from '@/hooks/useWishlist'
 
 export function Header() {
   const { data: session } = useSession()
   const { count, openCart } = useCartStore()
-  const router = useRouter()
+  const { wishlistIds } = useWishlist()
   const [searchOpen, setSearchOpen] = useState(false)
-  const [searchQuery, setSearchQuery] = useState('')
-  const inputRef = useRef<HTMLInputElement>(null)
-
-  useEffect(() => {
-    if (searchOpen) inputRef.current?.focus()
-  }, [searchOpen])
-
-  function handleSearch(e: React.FormEvent) {
-    e.preventDefault()
-    if (!searchQuery.trim()) return
-    setSearchOpen(false)
-    setSearchQuery('')
-    router.push(`/products?q=${encodeURIComponent(searchQuery.trim())}`)
-  }
 
   return (
     <>
       <header className="sticky top-0 z-40 border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60">
         <div className="container flex h-16 items-center justify-between">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2">
+          <Link href="/" className="flex items-center gap-2 shrink-0">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
               <Package className="h-5 w-5 text-white" />
             </div>
@@ -57,29 +43,30 @@ export function Header() {
           </nav>
 
           {/* Actions */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
             {searchOpen ? (
-              <form onSubmit={handleSearch} className="flex items-center gap-1">
-                <Input
-                  ref={inputRef}
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search products…"
-                  className="h-8 w-48 text-sm"
-                />
-                <Button type="submit" variant="ghost" size="icon" className="h-8 w-8">
-                  <Search className="h-4 w-4" />
-                </Button>
-                <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setSearchOpen(false); setSearchQuery('') }}>
-                  <X className="h-4 w-4" />
-                </Button>
-              </form>
+              <SearchAutocomplete onClose={() => setSearchOpen(false)} />
             ) : (
               <Button variant="ghost" size="icon" onClick={() => setSearchOpen(true)}>
                 <Search className="h-5 w-5" />
               </Button>
             )}
 
+            {/* Wishlist */}
+            {session && (
+              <Button variant="ghost" size="icon" className="relative" asChild>
+                <Link href="/wishlist">
+                  <Heart className="h-5 w-5" />
+                  {wishlistIds.size > 0 && (
+                    <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
+                      {wishlistIds.size > 9 ? '9+' : wishlistIds.size}
+                    </span>
+                  )}
+                </Link>
+              </Button>
+            )}
+
+            {/* Cart */}
             <Button variant="ghost" size="icon" className="relative" onClick={openCart}>
               <ShoppingCart className="h-5 w-5" />
               {count > 0 && (
@@ -110,6 +97,9 @@ export function Header() {
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
                     <Link href="/orders"><Package className="mr-2 h-4 w-4" />My Orders</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/wishlist"><Heart className="mr-2 h-4 w-4" />Wishlist</Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
                     <Link href="/account"><Settings className="mr-2 h-4 w-4" />Account</Link>

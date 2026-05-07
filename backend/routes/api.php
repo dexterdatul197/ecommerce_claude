@@ -9,8 +9,13 @@ use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\AddressController;
 use App\Http\Controllers\Api\CouponController;
 use App\Http\Controllers\Api\ReviewController;
+use App\Http\Controllers\Api\WishlistController;
+use App\Http\Controllers\Api\StripeWebhookController;
 use App\Http\Controllers\Api\Admin;
 use Illuminate\Support\Facades\Route;
+
+// ── Stripe Webhook (no auth) ──────────────────────────────
+Route::post('/stripe/webhook', [StripeWebhookController::class, 'handle']);
 
 // ── Public ────────────────────────────────────────────────
 Route::post('/auth/register',         [AuthController::class, 'register']);
@@ -59,6 +64,11 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Reviews
     Route::post('/products/{id}/reviews', [ReviewController::class, 'store']);
+
+    // Wishlist
+    Route::get('/wishlist',             [WishlistController::class, 'index']);
+    Route::post('/wishlist/{productId}', [WishlistController::class, 'store']);
+    Route::delete('/wishlist/{productId}', [WishlistController::class, 'destroy']);
 });
 
 // ── Admin ──────────────────────────────────────────────────

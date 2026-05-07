@@ -167,6 +167,12 @@ export interface ApiResponse<T> {
   meta?: ApiMeta
 }
 
+export interface WishlistItem {
+  id: number
+  product_id: number
+  product: Product | null
+}
+
 export interface DashboardData {
   stats: {
     total_revenue: number
@@ -179,4 +185,6 @@ export interface DashboardData {
   revenue_by_month: { month: string; revenue: number; orders: number }[]
   orders_by_status: Record<string, number>
   low_stock: { id: number; name: string; sku: string; stock: number }[]
+  top_products: { product_id: number; product_name: string; total_revenue: number; units_sold: number }[]
+  revenue_by_category: { category: string; revenue: number }[]
 }

@@ -1,19 +1,34 @@
 'use client'
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { BarChart3, DollarSign, Package, ShoppingCart, Users, AlertTriangle } from 'lucide-react'
+import { BarChart3, DollarSign, Package, ShoppingCart, Users, AlertTriangle, TrendingUp } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { StatsCard } from '@/components/admin/StatsCard'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatCurrency, getStatusColor } from '@/lib/utils'
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import {
+  AreaChart, Area, BarChart, Bar,
+  XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer,
+} from 'recharts'
 import api from '@/lib/api'
 import type { DashboardData } from '@/types'
 
+const PERIODS = [
+  { value: '7d', label: '7 Days' },
+  { value: '30d', label: '30 Days' },
+  { value: '12m', label: '12 Months' },
+] as const
+
+type Period = '7d' | '30d' | '12m'
+
 export default function AdminDashboardPage() {
+  const [period, setPeriod] = useState<Period>('12m')
+
   const { data, isLoading } = useQuery<{ data: DashboardData }>({
-    queryKey: ['admin', 'dashboard'],
-    queryFn: () => api.get('/admin/dashboard').then(r => r.data),
+    queryKey: ['admin', 'dashboard', period],
+    queryFn: () => api.get('/admin/dashboard', { params: { period } }).then(r => r.data),
     refetchInterval: 60 * 1000,
   })
 
@@ -25,6 +40,10 @@ export default function AdminDashboardPage() {
         {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-32 rounded-lg" />)}
       </div>
       <Skeleton className="h-72 rounded-lg" />
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <Skeleton className="h-64 rounded-lg" />
+        <Skeleton className="h-64 rounded-lg" />
+      </div>
     </div>
   )
 
@@ -40,9 +59,25 @@ export default function AdminDashboardPage() {
         <StatsCard title="Pending Reviews" value={d?.stats.pending_reviews ?? 0} icon={AlertTriangle} iconColor="text-red-600" />
       </div>
 
+      {/* Period toggle */}
+      <div className="flex items-center gap-2">
+        <span className="text-sm font-medium text-muted-foreground">Period:</span>
+        <div className="flex rounded-lg border bg-muted p-1 gap-1">
+          {PERIODS.map(p => (
+            <button
+              key={p.value}
+              onClick={() => setPeriod(p.value)}
+              className={`rounded-md px-3 py-1 text-sm font-medium transition-all ${period === p.value ? 'bg-white shadow text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Revenue chart */}
       <Card>
-        <CardHeader><CardTitle>Revenue (Last 12 Months)</CardTitle></CardHeader>
+        <CardHeader><CardTitle>Revenue Over Time</CardTitle></CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={250}>
             <AreaChart data={d?.revenue_by_month ?? []}>
@@ -75,6 +110,57 @@ export default function AdminDashboardPage() {
                 </div>
               ))}
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Revenue by category */}
+        <Card>
+          <CardHeader><CardTitle>Revenue by Category</CardTitle></CardHeader>
+          <CardContent>
+            {(d?.revenue_by_category?.length ?? 0) === 0 ? (
+              <p className="py-8 text-center text-sm text-muted-foreground">No sales data yet.</p>
+            ) : (
+              <ResponsiveContainer width="100%" height={200}>
+                <BarChart data={d?.revenue_by_category ?? []} layout="vertical" margin={{ left: 8 }}>
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f0f0f0" />
+                  <XAxis type="number" tick={{ fontSize: 11 }} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
+                  <YAxis type="category" dataKey="category" tick={{ fontSize: 11 }} width={90} />
+                  <Tooltip formatter={(v: number) => formatCurrency(v)} />
+                  <Bar dataKey="revenue" fill="hsl(221.2 83.2% 53.3%)" radius={[0, 4, 4, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        {/* Top products */}
+        <Card>
+          <CardHeader><CardTitle className="flex items-center gap-2"><TrendingUp className="h-4 w-4 text-green-600" />Top Products</CardTitle></CardHeader>
+          <CardContent>
+            {(d?.top_products?.length ?? 0) === 0 ? (
+              <p className="py-4 text-center text-sm text-muted-foreground">No sales data yet.</p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Product</TableHead>
+                    <TableHead className="text-center">Units</TableHead>
+                    <TableHead className="text-right">Revenue</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {d?.top_products.map((p, i) => (
+                    <TableRow key={p.product_id ?? i}>
+                      <TableCell className="font-medium max-w-[180px] truncate">{p.product_name}</TableCell>
+                      <TableCell className="text-center text-muted-foreground">{p.units_sold}</TableCell>
+                      <TableCell className="text-right font-semibold text-green-700">{formatCurrency(p.total_revenue)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
           </CardContent>
         </Card>
 

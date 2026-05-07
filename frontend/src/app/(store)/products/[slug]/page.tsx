@@ -10,7 +10,8 @@ import { Separator } from '@/components/ui/separator'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Skeleton } from '@/components/ui/skeleton'
 import { StarRating } from '@/components/store/StarRating'
-import { useProduct, useProductReviews } from '@/hooks/useProducts'
+import { useProduct, useProductReviews, useProducts } from '@/hooks/useProducts'
+import { ProductCard } from '@/components/store/ProductCard'
 import { useCart } from '@/hooks/useCart'
 import { useToast } from '@/components/ui/use-toast'
 import { useSession } from 'next-auth/react'
@@ -41,6 +42,10 @@ export default function ProductDetailPage() {
 
   const product = data?.data
   const { data: reviewsData } = useProductReviews(product?.id)
+  const { data: relatedData } = useProducts({
+    category: product?.category?.slug,
+    per_page: 5,
+  })
   const reviews = reviewsData?.data ?? []
 
   const [reviewError, setReviewError] = useState<string | null>(null)
@@ -247,6 +252,20 @@ export default function ProductDetailPage() {
           <div className="text-xs text-muted-foreground">SKU: {product.sku}</div>
         </div>
       </div>
+
+      {/* Related products */}
+      {relatedData && (() => {
+        const related = relatedData.data.filter(p => p.id !== product.id).slice(0, 4)
+        if (related.length === 0) return null
+        return (
+          <div className="mt-16">
+            <h2 className="mb-6 text-2xl font-bold">You May Also Like</h2>
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+              {related.map(p => <ProductCard key={p.id} product={p} />)}
+            </div>
+          </div>
+        )
+      })()}
 
       {/* Tabs */}
       <div className="mt-12">

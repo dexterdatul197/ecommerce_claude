@@ -1,15 +1,17 @@
 'use client'
 import Link from 'next/link'
 import Image from 'next/image'
-import { ShoppingCart } from 'lucide-react'
+import { ShoppingCart, Heart } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { StarRating } from '@/components/store/StarRating'
 import { formatCurrency } from '@/lib/utils'
 import { useCart } from '@/hooks/useCart'
+import { useWishlist } from '@/hooks/useWishlist'
 import { useToast } from '@/components/ui/use-toast'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
+import { cn } from '@/lib/utils'
 import type { Product } from '@/types'
 
 interface ProductCardProps {
@@ -18,6 +20,7 @@ interface ProductCardProps {
 
 export function ProductCard({ product }: ProductCardProps) {
   const { addItem } = useCart()
+  const { wishlistIds, toggle: wishlistToggle } = useWishlist()
   const { toast } = useToast()
   const { data: session } = useSession()
   const router = useRouter()
@@ -26,12 +29,11 @@ export function ProductCard({ product }: ProductCardProps) {
     ? Math.round(((product.compare_price - product.price) / product.compare_price) * 100)
     : null
 
+  const isWishlisted = wishlistIds.has(product.id)
+
   function handleAddToCart(e: React.MouseEvent) {
     e.preventDefault()
-    if (!session) {
-      router.push('/auth/login')
-      return
-    }
+    if (!session) { router.push('/auth/login'); return }
     addItem.mutate(
       { product_id: product.id, quantity: 1 },
       {
@@ -39,6 +41,14 @@ export function ProductCard({ product }: ProductCardProps) {
         onError: (err) => toast({ title: 'Error', description: err.message, variant: 'destructive' }),
       }
     )
+  }
+
+  function handleWishlist(e: React.MouseEvent) {
+    e.preventDefault()
+    if (!session) { router.push('/auth/login'); return }
+    wishlistToggle.mutate(product.id, {
+      onError: () => toast({ title: 'Error', description: 'Could not update wishlist.', variant: 'destructive' }),
+    })
   }
 
   return (
@@ -67,6 +77,19 @@ export function ProductCard({ product }: ProductCardProps) {
               <Badge variant="secondary">Out of Stock</Badge>
             </div>
           )}
+
+          {/* Wishlist button */}
+          <button
+            onClick={handleWishlist}
+            className={cn(
+              'absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full shadow transition-all',
+              isWishlisted
+                ? 'bg-red-500 text-white'
+                : 'bg-white/90 text-gray-400 opacity-0 group-hover:opacity-100 hover:text-red-500'
+            )}
+          >
+            <Heart className={cn('h-4 w-4', isWishlisted && 'fill-current')} />
+          </button>
         </div>
 
         {/* Info */}
