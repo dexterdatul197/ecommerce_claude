@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Pencil, Trash2, Search, Upload, X, ImageIcon } from 'lucide-react'
+import { Plus, Pencil, Trash2, Search, Upload, X, ImageIcon, CheckSquare, Square } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -37,6 +37,8 @@ export default function AdminProductsPage() {
   const [editing, setEditing] = useState<Product | null>(null)
   const [form, setForm] = useState<ProductForm>(DEFAULT_FORM)
   const [productImages, setProductImages] = useState<ProductImage[]>([])
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
+  const [bulkLoading, setBulkLoading] = useState(false)
 
   const { data, isLoading } = useQuery<{ data: Product[]; meta: { total: number; last_page: number } }>({
     queryKey: ['admin', 'products', search, page],
@@ -45,6 +47,49 @@ export default function AdminProductsPage() {
 
   const { data: catData } = useCategories()
   const categories = catData?.data ?? []
+  const products = data?.data ?? []
+  const meta = data?.meta
+
+  const allSelected = products.length > 0 && products.every(p => selectedIds.has(p.id))
+  const someSelected = selectedIds.size > 0
+
+  function toggleAll() {
+    setSelectedIds(prev => {
+      if (allSelected) return new Set()
+      return new Set(products.map(p => p.id))
+    })
+  }
+
+  function toggleOne(id: number) {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  async function handleBulkAction(action: 'activate' | 'deactivate' | 'delete') {
+    if (!confirm(`${action === 'delete' ? 'Delete' : action === 'activate' ? 'Activate' : 'Deactivate'} ${selectedIds.size} product(s)?`)) return
+    setBulkLoading(true)
+    try {
+      const ids = Array.from(selectedIds)
+      if (action === 'delete') {
+        await Promise.all(ids.map(id => api.delete(`/admin/products/${id}`)))
+        toast({ title: `${ids.length} product(s) deleted.` })
+      } else {
+        const status = action === 'activate' ? 'active' : 'inactive'
+        await Promise.all(ids.map(id => api.put(`/admin/products/${id}`, { status })))
+        toast({ title: `${ids.length} product(s) ${action}d.` })
+      }
+      setSelectedIds(new Set())
+      queryClient.invalidateQueries({ queryKey: ['admin', 'products'] })
+    } catch {
+      toast({ title: 'Error', description: 'Some actions failed.', variant: 'destructive' })
+    } finally {
+      setBulkLoading(false)
+    }
+  }
 
   const saveProduct = useMutation({
     mutationFn: (payload: Partial<ProductForm>) =>
@@ -54,7 +99,6 @@ export default function AdminProductsPage() {
     onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'products'] })
       if (!editing) {
-        // Switch to edit mode so images can be added
         const created: Product = res.data.data
         setEditing(created)
         setProductImages(created.images ?? [])
@@ -79,9 +123,7 @@ export default function AdminProductsPage() {
     mutationFn: ({ id, files }: { id: number; files: File[] }) => {
       const formData = new FormData()
       files.forEach(f => formData.append('images[]', f))
-      return api.post(`/admin/products/${id}/images`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      })
+      return api.post(`/admin/products/${id}/images`, formData, { headers: { 'Content-Type': 'multipart/form-data' } })
     },
     onSuccess: (res) => {
       const newImages: ProductImage[] = res.data.data
@@ -107,34 +149,24 @@ export default function AdminProductsPage() {
     setEditing(product)
     setProductImages(product.images ?? [])
     setForm({
-      name: product.name,
-      description: product.description ?? '',
+      name: product.name, description: product.description ?? '',
       short_description: product.short_description ?? '',
-      price: String(product.price),
-      compare_price: String(product.compare_price ?? ''),
-      stock: String(product.stock),
-      sku: product.sku,
+      price: String(product.price), compare_price: String(product.compare_price ?? ''),
+      stock: String(product.stock), sku: product.sku,
       category_id: String(product.category?.id ?? ''),
-      status: product.status,
-      featured: product.featured,
+      status: product.status, featured: product.featured,
     })
     setDialogOpen(true)
   }
 
   function openCreate() {
-    setEditing(null)
-    setForm(DEFAULT_FORM)
-    setProductImages([])
-    setDialogOpen(true)
+    setEditing(null); setForm(DEFAULT_FORM); setProductImages([]); setDialogOpen(true)
   }
 
   function update(field: keyof ProductForm) {
-    return (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
+    return (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
       setForm(f => ({ ...f, [field]: e.target.value }))
   }
-
-  const products = data?.data ?? []
-  const meta = data?.meta
 
   return (
     <div className="space-y-4">
@@ -142,17 +174,37 @@ export default function AdminProductsPage() {
         <div className="flex gap-3">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input placeholder="Search products…" value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9 max-w-xs" />
+            <Input placeholder="Search products…" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1) }} className="pl-9 max-w-xs" />
           </div>
         </div>
         <Button onClick={openCreate}><Plus className="mr-2 h-4 w-4" />Add Product</Button>
       </div>
+
+      {/* Bulk action bar */}
+      {someSelected && (
+        <div className="flex items-center gap-3 rounded-lg border bg-muted/50 px-4 py-2">
+          <span className="text-sm font-medium">{selectedIds.size} selected</span>
+          <Button size="sm" variant="outline" disabled={bulkLoading} onClick={() => handleBulkAction('activate')}>Activate</Button>
+          <Button size="sm" variant="outline" disabled={bulkLoading} onClick={() => handleBulkAction('deactivate')}>Deactivate</Button>
+          <Button size="sm" variant="destructive" disabled={bulkLoading} onClick={() => handleBulkAction('delete')}>
+            <Trash2 className="mr-1 h-3.5 w-3.5" />Delete
+          </Button>
+          <button className="ml-auto text-muted-foreground hover:text-foreground" onClick={() => setSelectedIds(new Set())}>
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
 
       <Card>
         <CardContent className="p-0">
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-10">
+                  <button onClick={toggleAll} className="flex items-center justify-center text-muted-foreground hover:text-foreground">
+                    {allSelected ? <CheckSquare className="h-4 w-4 text-primary" /> : <Square className="h-4 w-4" />}
+                  </button>
+                </TableHead>
                 <TableHead>Product</TableHead>
                 <TableHead>SKU</TableHead>
                 <TableHead>Price</TableHead>
@@ -165,10 +217,15 @@ export default function AdminProductsPage() {
             <TableBody>
               {isLoading
                 ? Array.from({ length: 8 }).map((_, i) => (
-                    <TableRow key={i}><TableCell colSpan={7}><Skeleton className="h-8 w-full" /></TableCell></TableRow>
+                    <TableRow key={i}><TableCell colSpan={8}><Skeleton className="h-8 w-full" /></TableCell></TableRow>
                   ))
                 : products.map((p) => (
-                  <TableRow key={p.id}>
+                  <TableRow key={p.id} className={selectedIds.has(p.id) ? 'bg-primary/5' : ''}>
+                    <TableCell>
+                      <button onClick={() => toggleOne(p.id)} className="flex items-center justify-center text-muted-foreground hover:text-foreground">
+                        {selectedIds.has(p.id) ? <CheckSquare className="h-4 w-4 text-primary" /> : <Square className="h-4 w-4" />}
+                      </button>
+                    </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-3">
                         {p.images?.[0] ? (
@@ -183,9 +240,7 @@ export default function AdminProductsPage() {
                     </TableCell>
                     <TableCell className="text-muted-foreground">{p.sku}</TableCell>
                     <TableCell>{formatCurrency(p.price)}</TableCell>
-                    <TableCell>
-                      <span className={p.stock <= 5 ? 'font-bold text-red-600' : ''}>{p.stock}</span>
-                    </TableCell>
+                    <TableCell><span className={p.stock <= 5 ? 'font-bold text-red-600' : ''}>{p.stock}</span></TableCell>
                     <TableCell>
                       <span className={`rounded-full px-2 py-0.5 text-xs font-semibold capitalize ${getStatusColor(p.status)}`}>{p.status}</span>
                     </TableCell>
@@ -238,9 +293,7 @@ export default function AdminProductsPage() {
                       <SelectLabel className="text-xs font-semibold text-muted-foreground">{c.name}</SelectLabel>
                       {c.children && c.children.length > 0
                         ? c.children.map(child => (
-                            <SelectItem key={child.id} value={String(child.id)} className="pl-6">
-                              {child.name}
-                            </SelectItem>
+                            <SelectItem key={child.id} value={String(child.id)} className="pl-6">{child.name}</SelectItem>
                           ))
                         : <SelectItem value={String(c.id)}>{c.name}</SelectItem>
                       }
@@ -281,7 +334,6 @@ export default function AdminProductsPage() {
               <Textarea value={form.description} onChange={update('description')} rows={4} />
             </div>
 
-            {/* Images — only available after product exists */}
             {editing && (
               <div className="col-span-2 space-y-2">
                 <Label>Images</Label>
@@ -308,17 +360,11 @@ export default function AdminProductsPage() {
                       </>
                     )}
                     <input
-                      type="file"
-                      multiple
-                      accept="image/*"
-                      className="hidden"
+                      type="file" multiple accept="image/*" className="hidden"
                       disabled={uploadImages.isPending}
                       onChange={(e) => {
                         const files = Array.from(e.target.files ?? [])
-                        if (files.length > 0) {
-                          uploadImages.mutate({ id: editing.id, files })
-                          e.target.value = ''
-                        }
+                        if (files.length > 0) { uploadImages.mutate({ id: editing.id, files }); e.target.value = '' }
                       }}
                     />
                   </label>

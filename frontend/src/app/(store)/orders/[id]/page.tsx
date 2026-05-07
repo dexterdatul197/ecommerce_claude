@@ -1,7 +1,7 @@
 'use client'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
-import { ChevronLeft, Package } from 'lucide-react'
+import { ChevronLeft, Package, Clock, Cog, Truck, CheckCircle2, XCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
@@ -9,8 +9,14 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useOrder, useCancelOrder } from '@/hooks/useOrders'
 import { useToast } from '@/components/ui/use-toast'
 import { formatCurrency, formatDate, getStatusColor } from '@/lib/utils'
+import { cn } from '@/lib/utils'
 
-const STATUS_STEPS = ['pending', 'processing', 'shipped', 'delivered']
+const STATUS_STEPS = [
+  { key: 'pending',    label: 'Order Placed', desc: 'We\'ve received your order',    icon: Clock },
+  { key: 'processing', label: 'Processing',   desc: 'Your items are being prepared', icon: Cog },
+  { key: 'shipped',    label: 'Shipped',       desc: 'Your order is on its way',      icon: Truck },
+  { key: 'delivered',  label: 'Delivered',     desc: 'Enjoy your order!',             icon: CheckCircle2 },
+]
 
 export default function OrderDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -42,7 +48,7 @@ export default function OrderDetailPage() {
     </div>
   )
 
-  const stepIndex = STATUS_STEPS.indexOf(order.status)
+  const stepIndex = STATUS_STEPS.findIndex(s => s.key === order.status)
 
   return (
     <div className="container max-w-3xl py-8">
@@ -50,35 +56,68 @@ export default function OrderDetailPage() {
         <Link href="/orders"><ChevronLeft className="mr-1 h-4 w-4" />My Orders</Link>
       </Button>
 
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">{order.order_number ?? `Order #${order.id}`}</h1>
           <p className="text-sm text-muted-foreground">Placed on {formatDate(order.created_at)}</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <span className={`rounded-full px-3 py-1 text-sm font-semibold ${getStatusColor(order.status)}`}>{order.status}</span>
           <span className={`rounded-full px-3 py-1 text-sm font-semibold ${getStatusColor(order.payment_status)}`}>{order.payment_status}</span>
         </div>
       </div>
 
       {/* Progress tracker */}
-      {order.status !== 'cancelled' && (
+      {order.status === 'cancelled' ? (
+        <Card className="mb-6 border-red-200 bg-red-50">
+          <CardContent className="flex items-center gap-3 p-5">
+            <XCircle className="h-8 w-8 shrink-0 text-red-500" />
+            <div>
+              <p className="font-semibold text-red-700">Order Cancelled</p>
+              <p className="text-sm text-red-500">This order has been cancelled.</p>
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
         <Card className="mb-6">
           <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              {STATUS_STEPS.map((step, i) => (
-                <div key={step} className="flex flex-1 items-center">
-                  <div className="flex flex-col items-center">
-                    <div className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold ${i <= stepIndex ? 'bg-primary text-white' : 'bg-gray-200 text-gray-400'}`}>
-                      {i + 1}
+            <div className="flex items-start">
+              {STATUS_STEPS.map((step, i) => {
+                const isCompleted = i < stepIndex
+                const isCurrent   = i === stepIndex
+                const Icon        = step.icon
+
+                return (
+                  <div key={step.key} className="flex flex-1 items-start">
+                    <div className="flex flex-col items-center gap-1.5">
+                      <div className={cn(
+                        'flex h-10 w-10 items-center justify-center rounded-full transition-all',
+                        isCompleted ? 'bg-green-500 text-white'
+                        : isCurrent ? 'bg-primary text-white ring-4 ring-primary/20'
+                        : 'bg-gray-100 text-gray-400'
+                      )}>
+                        {isCompleted
+                          ? <CheckCircle2 className="h-5 w-5" />
+                          : <Icon className={cn('h-5 w-5', isCurrent && 'animate-pulse')} />
+                        }
+                      </div>
+                      <p className={cn('text-xs font-medium text-center w-16',
+                        isCompleted ? 'text-green-600'
+                        : isCurrent ? 'text-primary'
+                        : 'text-muted-foreground'
+                      )}>
+                        {step.label}
+                      </p>
+                      <p className="hidden sm:block text-[10px] text-center text-muted-foreground w-16 leading-tight">
+                        {step.desc}
+                      </p>
                     </div>
-                    <span className="mt-1 text-xs capitalize text-muted-foreground">{step}</span>
+                    {i < STATUS_STEPS.length - 1 && (
+                      <div className={cn('mx-1 mt-5 h-0.5 flex-1 transition-colors', i < stepIndex ? 'bg-green-500' : 'bg-gray-200')} />
+                    )}
                   </div>
-                  {i < STATUS_STEPS.length - 1 && (
-                    <div className={`mx-2 h-0.5 flex-1 ${i < stepIndex ? 'bg-primary' : 'bg-gray-200'}`} />
-                  )}
-                </div>
-              ))}
+                )
+              })}
             </div>
           </CardContent>
         </Card>
@@ -111,7 +150,12 @@ export default function OrderDetailPage() {
           <CardHeader><CardTitle className="text-base">Order Summary</CardTitle></CardHeader>
           <CardContent className="space-y-2 pt-0 text-sm">
             <div className="flex justify-between"><span className="text-muted-foreground">Subtotal</span><span>{formatCurrency(order.subtotal)}</span></div>
-            {order.discount_amount > 0 && <div className="flex justify-between text-green-600"><span>Discount</span><span>-{formatCurrency(order.discount_amount)}</span></div>}
+            {order.discount_amount > 0 && (
+              <div className="flex justify-between text-green-600">
+                <span>Discount {order.coupon && `(${order.coupon.code})`}</span>
+                <span>−{formatCurrency(order.discount_amount)}</span>
+              </div>
+            )}
             <div className="flex justify-between"><span className="text-muted-foreground">Shipping</span><span>{formatCurrency(order.shipping_amount)}</span></div>
             <div className="flex justify-between"><span className="text-muted-foreground">Tax</span><span>{formatCurrency(order.tax_amount)}</span></div>
             <Separator />
@@ -127,7 +171,7 @@ export default function OrderDetailPage() {
             <p className="text-muted-foreground">{order.shipping_address.line1}</p>
             {order.shipping_address.line2 && <p className="text-muted-foreground">{order.shipping_address.line2}</p>}
             <p className="text-muted-foreground">{order.shipping_address.city}, {order.shipping_address.state} {order.shipping_address.zip}</p>
-            <p className="text-muted-foreground">{order.shipping_address.country}</p>
+            <p className="text-muted-foreground">{order.shipping_phone}</p>
           </CardContent>
         </Card>
 

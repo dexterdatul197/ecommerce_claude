@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Eye } from 'lucide-react'
+import { Eye, Download } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -37,10 +37,42 @@ export default function AdminOrdersPage() {
   const orders = data?.data ?? []
   const meta = data?.meta
 
+  async function handleExportCSV() {
+    const res = await api.get('/admin/orders', {
+      params: { search: search || undefined, status: statusFilter !== 'all' ? statusFilter : undefined, per_page: 1000 },
+    })
+    const rows: Order[] = res.data.data
+    const headers = ['Order', 'Customer', 'Date', 'Items', 'Subtotal', 'Discount', 'Shipping', 'Tax', 'Total', 'Status', 'Payment']
+    const escape = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`
+    const lines = [
+      headers.join(','),
+      ...rows.map(o => [
+        escape(o.order_number ?? `#${o.id}`),
+        escape(o.shipping_name),
+        escape(new Date(o.created_at).toLocaleDateString()),
+        escape(o.items?.length ?? 0),
+        escape(o.subtotal),
+        escape(o.discount_amount),
+        escape(o.shipping_amount),
+        escape(o.tax_amount),
+        escape(o.total),
+        escape(o.status),
+        escape(o.payment_status),
+      ].join(',')),
+    ]
+    const blob = new Blob([lines.join('\n')], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `orders-${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   return (
     <div className="space-y-4">
       {/* Filters */}
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <Input placeholder="Search by customer, order ID…" value={search} onChange={(e) => setSearch(e.target.value)} className="max-w-xs" />
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
@@ -49,6 +81,9 @@ export default function AdminOrdersPage() {
             {ORDER_STATUSES.map(s => <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}
           </SelectContent>
         </Select>
+        <Button variant="outline" size="sm" className="ml-auto" onClick={handleExportCSV}>
+          <Download className="mr-2 h-4 w-4" />Export CSV
+        </Button>
       </div>
 
       <Card>

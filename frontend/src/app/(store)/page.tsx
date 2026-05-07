@@ -1,10 +1,13 @@
 'use client'
 import Link from 'next/link'
-import { ArrowRight, Zap, Shield, Truck, Tag } from 'lucide-react'
+import Image from 'next/image'
+import { ArrowRight, Zap, Shield, Truck, Tag, ShoppingCart } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ProductCard } from '@/components/store/ProductCard'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useProducts, useCategories } from '@/hooks/useProducts'
+import { useRecentlyViewed } from '@/hooks/useRecentlyViewed'
+import { formatCurrency } from '@/lib/utils'
 
 const CATEGORY_EMOJIS: Record<string, string> = {
   electronics: '💻',
@@ -260,6 +263,45 @@ function NewArrivals() {
   )
 }
 
+function RecentlyViewedSection() {
+  const { items } = useRecentlyViewed()
+  if (items.length === 0) return null
+
+  return (
+    <section className="py-16">
+      <div className="container">
+        <div className="mb-8 flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold">Recently Viewed</h2>
+            <p className="text-sm text-muted-foreground">Pick up where you left off</p>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+          {items.map((product) => (
+            <Link key={product.id} href={`/products/${product.slug}`} className="group block">
+              <div className="overflow-hidden rounded-lg border bg-white shadow-sm transition-shadow hover:shadow-md">
+                <div className="relative aspect-square overflow-hidden bg-gray-50">
+                  {product.primary_image ? (
+                    <Image src={product.primary_image} alt={product.name} fill className="object-cover transition-transform duration-300 group-hover:scale-105" sizes="(max-width: 640px) 50vw, 16vw" />
+                  ) : (
+                    <div className="flex h-full items-center justify-center text-gray-300">
+                      <ShoppingCart className="h-8 w-8" />
+                    </div>
+                  )}
+                </div>
+                <div className="p-2">
+                  <p className="truncate text-xs font-medium">{product.name}</p>
+                  <p className="text-xs font-bold text-primary">{formatCurrency(product.price)}</p>
+                </div>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
 export default function HomePage() {
   return (
     <>
@@ -269,6 +311,7 @@ export default function HomePage() {
       <PromoBanner />
       <FeaturedProducts />
       <NewArrivals />
+      <RecentlyViewedSection />
     </>
   )
 }

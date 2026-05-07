@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { CheckCircle } from 'lucide-react'
+import { CheckCircle, Tag, X, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -16,6 +16,13 @@ import api from '@/lib/api'
 import type { Address } from '@/types'
 import Link from 'next/link'
 
+interface AppliedCoupon {
+  code: string
+  type: string
+  value: number
+  discount_amount: number
+}
+
 export default function CheckoutPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -28,6 +35,9 @@ export default function CheckoutPage() {
   const [selectedAddressId, setSelectedAddressId] = useState<number | null>(null)
   const [paymentMethod, setPaymentMethod] = useState('cod')
   const [couponCode, setCouponCode] = useState(couponFromCart)
+  const [appliedCoupon, setAppliedCoupon] = useState<AppliedCoupon | null>(null)
+  const [couponError, setCouponError] = useState<string | null>(null)
+  const [applyingCoupon, setApplyingCoupon] = useState(false)
   const [newAddress, setNewAddress] = useState({ name: '', phone: '', line1: '', city: '', state: '', zip: '', country: 'US' })
   const [showNewForm, setShowNewForm] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -45,8 +55,31 @@ export default function CheckoutPage() {
   const cart = cartQuery.data
   const subtotal = cart?.subtotal ?? 0
   const shipping = 5
-  const tax = subtotal * 0.08
-  const total = subtotal + shipping + tax
+  const discount = appliedCoupon?.discount_amount ?? 0
+  const tax = (subtotal - discount) * 0.08
+  const total = subtotal - discount + shipping + tax
+
+  async function handleApplyCoupon() {
+    if (!couponCode.trim()) return
+    setApplyingCoupon(true)
+    setCouponError(null)
+    try {
+      const res = await api.post('/coupons/validate', { code: couponCode, subtotal })
+      setAppliedCoupon(res.data.data)
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Invalid coupon.'
+      setCouponError(msg)
+      setAppliedCoupon(null)
+    } finally {
+      setApplyingCoupon(false)
+    }
+  }
+
+  function handleRemoveCoupon() {
+    setAppliedCoupon(null)
+    setCouponCode('')
+    setCouponError(null)
+  }
 
   async function handleAddAddress() {
     setLoading(true)
@@ -70,11 +103,13 @@ export default function CheckoutPage() {
       return
     }
     placeOrder.mutate(
-      { address_id: selectedAddressId, payment_method: paymentMethod, coupon_code: couponCode || undefined },
       {
-        onSuccess: (data) => {
-          router.push(`/orders/confirmation?id=${data.data.id}`)
-        },
+        address_id: selectedAddressId,
+        payment_method: paymentMethod,
+        coupon_code: appliedCoupon?.code || undefined,
+      },
+      {
+        onSuccess: (data) => router.push(`/orders/confirmation?id=${data.data.id}`),
         onError: (err) => toast({ title: 'Error', description: err.message, variant: 'destructive' }),
       }
     )
@@ -176,15 +211,55 @@ export default function CheckoutPage() {
                 </div>
               ))}
 
-              <div className="space-y-1">
-                <Label htmlFor="coupon" className="text-xs">Coupon Code</Label>
-                <Input id="coupon" placeholder="WELCOME10" value={couponCode} onChange={(e) => setCouponCode(e.target.value.toUpperCase())} className="uppercase" />
-              </div>
+              {/* Coupon */}
+              {appliedCoupon ? (
+                <div className="flex items-center justify-between rounded-lg border border-green-200 bg-green-50 px-3 py-2">
+                  <div className="flex items-center gap-2 text-sm text-green-700">
+                    <Tag className="h-4 w-4" />
+                    <span className="font-mono font-semibold">{appliedCoupon.code}</span>
+                    <span className="text-green-600">−{formatCurrency(appliedCoupon.discount_amount)}</span>
+                  </div>
+                  <button onClick={handleRemoveCoupon} className="text-green-600 hover:text-green-800">
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  <Label htmlFor="coupon" className="text-xs">Coupon Code</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="coupon"
+                      placeholder="WELCOME10"
+                      value={couponCode}
+                      onChange={(e) => { setCouponCode(e.target.value.toUpperCase()); setCouponError(null) }}
+                      onKeyDown={(e) => e.key === 'Enter' && handleApplyCoupon()}
+                      className="uppercase"
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleApplyCoupon}
+                      disabled={applyingCoupon || !couponCode.trim()}
+                      className="shrink-0"
+                    >
+                      {applyingCoupon ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Apply'}
+                    </Button>
+                  </div>
+                  {couponError && (
+                    <p className="text-xs text-destructive">{couponError}</p>
+                  )}
+                </div>
+              )}
 
               <Separator />
 
               <div className="space-y-1.5 text-sm">
                 <div className="flex justify-between"><span className="text-muted-foreground">Subtotal</span><span>{formatCurrency(subtotal)}</span></div>
+                {discount > 0 && (
+                  <div className="flex justify-between text-green-600 font-medium">
+                    <span>Discount</span><span>−{formatCurrency(discount)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between"><span className="text-muted-foreground">Shipping</span><span>{formatCurrency(shipping)}</span></div>
                 <div className="flex justify-between"><span className="text-muted-foreground">Tax (8%)</span><span>{formatCurrency(tax)}</span></div>
               </div>
