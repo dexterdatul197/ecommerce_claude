@@ -31,6 +31,11 @@ class ProductListResource extends JsonResource
             'reviews_count'     => $this->reviews_count,
             'category'          => new CategoryResource($this->whenLoaded('category')),
             'primary_image'     => $this->resolveImageUrl($this->images->first()?->url),
+            'images'            => $this->images->map(fn($img) => [
+                'id'  => $img->id,
+                'url' => $this->resolveImageUrl($img->url),
+                'alt' => $img->alt,
+            ])->values(),
         ];
     }
 }

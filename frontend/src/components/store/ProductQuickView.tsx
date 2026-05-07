@@ -2,8 +2,8 @@
 import { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { ShoppingCart, Minus, Plus, X } from 'lucide-react'
-import { Dialog, DialogContent } from '@/components/ui/dialog'
+import { ShoppingCart, Minus, Plus, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -29,8 +29,13 @@ export function ProductQuickView({ slug, onClose }: ProductQuickViewProps) {
   const { data: session } = useSession()
   const router = useRouter()
 
+  const [imageIndex, setImageIndex] = useState(0)
   const [selectedAttribute, setSelectedAttribute] = useState<ProductAttribute | null>(null)
   const [quantity, setQuantity] = useState(1)
+
+  const images = product?.images ?? []
+  const hasMultiple = images.length > 1
+  const currentImage = images[imageIndex]
 
   const discount = product?.compare_price
     ? Math.round(((product.compare_price - product.price) / product.compare_price) * 100)
@@ -55,9 +60,10 @@ export function ProductQuickView({ slug, onClose }: ProductQuickViewProps) {
 
   return (
     <Dialog open={!!slug} onOpenChange={(open) => { if (!open) onClose() }}>
-      <DialogContent className="max-w-2xl p-0 overflow-hidden">
+      <DialogContent key={slug} className="max-w-2xl p-0 overflow-hidden">
+        <DialogTitle className="sr-only">{product?.name ?? 'Quick View'}</DialogTitle>
         {isLoading || !product ? (
-          <div className="grid grid-cols-2 gap-6 p-6">
+          <div className="grid sm:grid-cols-2 gap-6 p-6">
             <Skeleton className="aspect-square rounded-lg" />
             <div className="space-y-4">
               <Skeleton className="h-7 w-3/4" />
@@ -68,23 +74,86 @@ export function ProductQuickView({ slug, onClose }: ProductQuickViewProps) {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2">
-            {/* Image */}
-            <div className="relative aspect-square bg-gray-50">
-              {product.primary_image ? (
-                <Image src={product.primary_image} alt={product.name} fill className="object-cover" sizes="(max-width: 640px) 100vw, 50vw" />
-              ) : (
-                <div className="flex h-full items-center justify-center text-gray-300">
-                  <ShoppingCart className="h-16 w-16" />
+            {/* Image carousel */}
+            <div className="flex flex-col bg-gray-50">
+              {/* Main image */}
+              <div className="relative aspect-square group">
+                {currentImage ? (
+                  <Image
+                    src={currentImage.url}
+                    alt={currentImage.alt ?? product.name}
+                    fill
+                    className="object-cover transition-opacity duration-200"
+                    sizes="(max-width: 640px) 100vw, 50vw"
+                  />
+                ) : product.primary_image ? (
+                  <Image
+                    src={product.primary_image}
+                    alt={product.name}
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 640px) 100vw, 50vw"
+                  />
+                ) : (
+                  <div className="flex h-full items-center justify-center text-gray-300">
+                    <ShoppingCart className="h-16 w-16" />
+                  </div>
+                )}
+
+                {discount && <Badge className="absolute left-3 top-3 bg-red-500 text-white z-10">-{discount}%</Badge>}
+                {product.stock > 0 && product.stock <= 5 && (
+                  <Badge className="absolute left-3 bottom-3 bg-orange-500 text-white z-10">Only {product.stock} left!</Badge>
+                )}
+
+                {hasMultiple && (
+                  <>
+                    <button
+                      onClick={() => setImageIndex(i => (i - 1 + images.length) % images.length)}
+                      className="absolute left-2 top-1/2 z-10 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-full bg-white/80 shadow opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white"
+                    >
+                      <ChevronLeft className="h-5 w-5" />
+                    </button>
+                    <button
+                      onClick={() => setImageIndex(i => (i + 1) % images.length)}
+                      className="absolute right-2 top-1/2 z-10 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-full bg-white/80 shadow opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white"
+                    >
+                      <ChevronRight className="h-5 w-5" />
+                    </button>
+                    {/* Dot indicators */}
+                    <div className="absolute bottom-3 left-1/2 z-10 -translate-x-1/2 flex gap-1.5">
+                      {images.map((_, i) => (
+                        <button
+                          key={i}
+                          onClick={() => setImageIndex(i)}
+                          className={cn('h-1.5 rounded-full transition-all', i === imageIndex ? 'w-4 bg-white' : 'w-1.5 bg-white/50')}
+                        />
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Thumbnails */}
+              {hasMultiple && (
+                <div className="flex gap-1.5 p-2 overflow-x-auto">
+                  {images.map((img, i) => (
+                    <button
+                      key={img.id}
+                      onClick={() => setImageIndex(i)}
+                      className={cn(
+                        'relative h-14 w-14 shrink-0 overflow-hidden rounded border-2 transition-all',
+                        i === imageIndex ? 'border-primary' : 'border-transparent hover:border-primary/40'
+                      )}
+                    >
+                      <Image src={img.url} alt={img.alt ?? ''} fill className="object-cover" sizes="56px" />
+                    </button>
+                  ))}
                 </div>
-              )}
-              {discount && <Badge className="absolute left-3 top-3 bg-red-500 text-white">-{discount}%</Badge>}
-              {product.stock > 0 && product.stock <= 5 && (
-                <Badge className="absolute left-3 bottom-3 bg-orange-500 text-white">Only {product.stock} left!</Badge>
               )}
             </div>
 
             {/* Info */}
-            <div className="flex flex-col gap-4 p-6">
+            <div className="flex flex-col gap-4 p-6 overflow-y-auto max-h-[70vh]">
               {product.category && (
                 <p className="text-xs font-medium uppercase tracking-wide text-primary">{product.category.name}</p>
               )}
