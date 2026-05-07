@@ -36,6 +36,19 @@ class OrderController extends Controller
         return response()->json(['data' => new OrderResource($order)]);
     }
 
+    public function bulkUpdateStatus(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'ids'    => ['required', 'array'],
+            'ids.*'  => ['integer'],
+            'status' => ['required', 'in:pending,processing,shipped,delivered,cancelled'],
+        ]);
+
+        Order::whereIn('id', $data['ids'])->update(['status' => $data['status']]);
+
+        return response()->json(['message' => 'Orders updated.', 'count' => count($data['ids'])]);
+    }
+
     public function updateStatus(Request $request, int $id): JsonResponse
     {
         $data  = $request->validate([

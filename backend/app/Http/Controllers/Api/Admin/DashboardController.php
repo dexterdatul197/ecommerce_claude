@@ -14,6 +14,16 @@ use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
+    public function badges(): JsonResponse
+    {
+        return response()->json([
+            'data' => [
+                'pending_orders'  => Order::where('status', 'pending')->count(),
+                'pending_reviews' => Review::where('status', 'pending')->count(),
+            ],
+        ]);
+    }
+
     public function index(Request $request): JsonResponse
     {
         $period = $request->get('period', '12m');

@@ -49,10 +49,17 @@ export default function CartPage() {
   if (!cart || cart.data.length === 0) {
     return (
       <div className="container flex flex-col items-center py-24 text-center">
-        <ShoppingCart className="h-20 w-20 text-muted-foreground" />
-        <h2 className="mt-4 text-2xl font-bold">Your cart is empty</h2>
-        <p className="mt-2 text-muted-foreground">Add some products to get started</p>
-        <Button asChild className="mt-6"><Link href="/products">Browse Products</Link></Button>
+        <div className="flex h-28 w-28 items-center justify-center rounded-full bg-muted">
+          <ShoppingCart className="h-14 w-14 text-muted-foreground" />
+        </div>
+        <h2 className="mt-6 text-2xl font-bold">Your cart is empty</h2>
+        <p className="mt-2 max-w-sm text-muted-foreground">
+          You haven't added anything yet. Browse our products and find something you'll love.
+        </p>
+        <div className="mt-8 flex gap-3">
+          <Button asChild size="lg"><Link href="/products">Browse Products</Link></Button>
+          <Button asChild variant="outline" size="lg"><Link href="/wishlist">View Wishlist</Link></Button>
+        </div>
       </div>
     )
   }

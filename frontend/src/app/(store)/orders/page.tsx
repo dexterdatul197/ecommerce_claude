@@ -20,10 +20,14 @@ export default function OrdersPage() {
         <div className="space-y-4">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-28 w-full rounded-lg" />)}</div>
       ) : orders.length === 0 ? (
         <div className="flex flex-col items-center py-24 text-center">
-          <Package className="h-16 w-16 text-muted-foreground" />
-          <h2 className="mt-4 text-xl font-semibold">No orders yet</h2>
-          <p className="mt-2 text-muted-foreground">Your orders will appear here after you shop</p>
-          <Button asChild className="mt-6"><Link href="/products">Start Shopping</Link></Button>
+          <div className="flex h-24 w-24 items-center justify-center rounded-full bg-muted">
+            <Package className="h-12 w-12 text-muted-foreground" />
+          </div>
+          <h2 className="mt-6 text-2xl font-bold">No orders yet</h2>
+          <p className="mt-2 max-w-sm text-muted-foreground">
+            Looks like you haven't placed any orders. Start shopping and your orders will show up here.
+          </p>
+          <Button asChild className="mt-8" size="lg"><Link href="/products">Start Shopping</Link></Button>
         </div>
       ) : (
         <div className="space-y-4">

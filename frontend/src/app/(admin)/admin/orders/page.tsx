@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Eye, Download } from 'lucide-react'
+import { Eye, Download, CheckSquare } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Card, CardContent } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Checkbox } from '@/components/ui/checkbox'
 import { formatCurrency, formatDate, getStatusColor } from '@/lib/utils'
 import { useToast } from '@/components/ui/use-toast'
 import api from '@/lib/api'
@@ -23,6 +24,8 @@ export default function AdminOrdersPage() {
   const [statusFilter, setStatusFilter] = useState('all')
   const [page, setPage] = useState(1)
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
+  const [bulkStatus, setBulkStatus] = useState('')
 
   const { data, isLoading } = useQuery<{ data: Order[]; meta: { total: number; last_page: number } }>({
     queryKey: ['admin', 'orders', search, statusFilter, page],
@@ -34,8 +37,40 @@ export default function AdminOrdersPage() {
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['admin', 'orders'] }); toast({ title: 'Status updated.' }) },
   })
 
+  const bulkUpdateStatus = useMutation({
+    mutationFn: ({ ids, status }: { ids: number[]; status: string }) =>
+      api.put('/admin/orders/bulk-status', { ids, status }),
+    onSuccess: (_, vars) => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'orders'] })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'badges'] })
+      setSelectedIds(new Set())
+      setBulkStatus('')
+      toast({ title: `${vars.ids.length} orders updated to "${vars.status}".` })
+    },
+    onError: (err) => toast({ title: 'Error', description: err.message, variant: 'destructive' }),
+  })
+
   const orders = data?.data ?? []
   const meta = data?.meta
+
+  const allSelected = orders.length > 0 && orders.every(o => selectedIds.has(o.id))
+  const someSelected = selectedIds.size > 0
+
+  function toggleAll() {
+    if (allSelected) {
+      setSelectedIds(new Set())
+    } else {
+      setSelectedIds(new Set(orders.map(o => o.id)))
+    }
+  }
+
+  function toggleOne(id: number) {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
 
   async function handleExportCSV() {
     const res = await api.get('/admin/orders', {
@@ -86,11 +121,43 @@ export default function AdminOrdersPage() {
         </Button>
       </div>
 
+      {/* Bulk action bar */}
+      {someSelected && (
+        <div className="flex items-center gap-3 rounded-lg border border-primary/30 bg-primary/5 px-4 py-2.5">
+          <CheckSquare className="h-4 w-4 text-primary" />
+          <span className="text-sm font-medium text-primary">{selectedIds.size} selected</span>
+          <div className="ml-auto flex items-center gap-2">
+            <Select value={bulkStatus} onValueChange={setBulkStatus}>
+              <SelectTrigger className="h-8 w-40 text-xs">
+                <SelectValue placeholder="Set status…" />
+              </SelectTrigger>
+              <SelectContent>
+                {ORDER_STATUSES.map(s => <SelectItem key={s} value={s} className="capitalize text-xs">{s}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Button
+              size="sm"
+              className="h-8"
+              disabled={!bulkStatus || bulkUpdateStatus.isPending}
+              onClick={() => bulkUpdateStatus.mutate({ ids: Array.from(selectedIds), status: bulkStatus })}
+            >
+              Apply
+            </Button>
+            <Button variant="ghost" size="sm" className="h-8" onClick={() => setSelectedIds(new Set())}>
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
+
       <Card>
         <CardContent className="p-0">
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-10">
+                  <Checkbox checked={allSelected} onCheckedChange={toggleAll} />
+                </TableHead>
                 <TableHead>Order</TableHead>
                 <TableHead>Customer</TableHead>
                 <TableHead>Date</TableHead>
@@ -103,10 +170,16 @@ export default function AdminOrdersPage() {
             <TableBody>
               {isLoading ? (
                 Array.from({ length: 8 }).map((_, i) => (
-                  <TableRow key={i}><TableCell colSpan={7}><Skeleton className="h-8 w-full" /></TableCell></TableRow>
+                  <TableRow key={i}><TableCell colSpan={8}><Skeleton className="h-8 w-full" /></TableCell></TableRow>
                 ))
               ) : orders.map((order) => (
-                <TableRow key={order.id}>
+                <TableRow key={order.id} className={selectedIds.has(order.id) ? 'bg-primary/5' : undefined}>
+                  <TableCell>
+                    <Checkbox
+                      checked={selectedIds.has(order.id)}
+                      onCheckedChange={() => toggleOne(order.id)}
+                    />
+                  </TableCell>
                   <TableCell className="font-medium">{order.order_number ?? `#${order.id}`}</TableCell>
                   <TableCell>{order.shipping_name}</TableCell>
                   <TableCell>{formatDate(order.created_at)}</TableCell>

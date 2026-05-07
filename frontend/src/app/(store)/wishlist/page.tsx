@@ -45,10 +45,14 @@ export default function WishlistPage() {
         </div>
       ) : items.length === 0 ? (
         <div className="py-24 text-center">
-          <Heart className="mx-auto h-16 w-16 text-muted-foreground/30" />
-          <p className="mt-4 text-lg font-medium">Your wishlist is empty</p>
-          <p className="text-sm text-muted-foreground">Save items you love by clicking the heart on any product.</p>
-          <Button asChild className="mt-6"><Link href="/products">Browse Products</Link></Button>
+          <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-red-50">
+            <Heart className="h-12 w-12 text-red-300" />
+          </div>
+          <p className="mt-6 text-xl font-bold">Your wishlist is empty</p>
+          <p className="mt-2 text-sm text-muted-foreground max-w-xs mx-auto">
+            See something you like? Click the heart icon on any product to save it here.
+          </p>
+          <Button asChild className="mt-8" size="lg"><Link href="/products">Discover Products</Link></Button>
         </div>
       ) : (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">

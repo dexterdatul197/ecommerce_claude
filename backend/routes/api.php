@@ -74,6 +74,7 @@ Route::middleware('auth:sanctum')->group(function () {
 // ── Admin ──────────────────────────────────────────────────
 Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function () {
     Route::get('/dashboard', [Admin\DashboardController::class, 'index']);
+    Route::get('/badges',   [Admin\DashboardController::class, 'badges']);
 
     // Categories
     Route::apiResource('categories', Admin\CategoryController::class);
@@ -85,6 +86,7 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
 
     // Orders
     Route::get('/orders',                   [Admin\OrderController::class, 'index']);
+    Route::put('/orders/bulk-status',       [Admin\OrderController::class, 'bulkUpdateStatus']);
     Route::get('/orders/{id}',              [Admin\OrderController::class, 'show']);
     Route::put('/orders/{id}/status',       [Admin\OrderController::class, 'updateStatus']);
 
