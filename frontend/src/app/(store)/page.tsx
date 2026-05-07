@@ -1,34 +1,91 @@
 'use client'
 import Link from 'next/link'
-import { ArrowRight, Zap, Shield, Truck } from 'lucide-react'
+import { ArrowRight, Zap, Shield, Truck, Tag } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ProductCard } from '@/components/store/ProductCard'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useProducts, useCategories } from '@/hooks/useProducts'
 
+const CATEGORY_EMOJIS: Record<string, string> = {
+  electronics: '💻',
+  clothing: '👕',
+  'home-garden': '🏡',
+  'home-&-garden': '🏡',
+  sports: '⚽',
+  phones: '📱',
+  laptops: '💻',
+  accessories: '🎧',
+  men: '👔',
+  women: '👗',
+  kids: '🧒',
+  furniture: '🛋️',
+  kitchen: '🍳',
+  garden: '🌿',
+  outdoor: '🏕️',
+  fitness: '🏋️',
+  'team-sports': '🏀',
+}
+
+function getCategoryEmoji(slug: string, name: string): string {
+  return CATEGORY_EMOJIS[slug] ?? CATEGORY_EMOJIS[name.toLowerCase()] ?? name.charAt(0).toUpperCase()
+}
+
 function HeroSection() {
   return (
     <section className="relative overflow-hidden bg-gradient-to-br from-primary/90 to-blue-700 text-white">
       <div className="container py-24">
-        <div className="max-w-2xl">
-          <h1 className="text-5xl font-bold leading-tight">
-            Shop the Best<br />
-            <span className="text-yellow-300">Products Online</span>
-          </h1>
-          <p className="mt-6 text-xl text-blue-100">
-            Discover thousands of products with fast delivery, easy returns, and unbeatable prices.
-          </p>
-          <div className="mt-8 flex gap-4">
-            <Button asChild size="lg" className="bg-white text-primary hover:bg-white/90">
-              <Link href="/products">Shop Now <ArrowRight className="ml-2 h-4 w-4" /></Link>
-            </Button>
-            <Button asChild size="lg" variant="outline" className="border-white bg-transparent text-white hover:bg-white/10 hover:text-white">
-              <Link href="/products?featured=true">Featured Deals</Link>
-            </Button>
+        <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-2">
+          <div className="max-w-2xl">
+            <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-white/20 px-4 py-1.5 text-sm font-medium backdrop-blur-sm">
+              <Tag className="h-3.5 w-3.5" />
+              New arrivals every week
+            </div>
+            <h1 className="text-5xl font-bold leading-tight">
+              Shop the Best<br />
+              <span className="text-yellow-300">Products Online</span>
+            </h1>
+            <p className="mt-6 text-xl text-blue-100">
+              Discover thousands of products with fast delivery, easy returns, and unbeatable prices.
+            </p>
+            <div className="mt-8 flex flex-wrap gap-4">
+              <Button asChild size="lg" className="bg-white text-primary hover:bg-white/90">
+                <Link href="/products">Shop Now <ArrowRight className="ml-2 h-4 w-4" /></Link>
+              </Button>
+              <Button asChild size="lg" variant="outline" className="border-white bg-transparent text-white hover:bg-white/10 hover:text-white">
+                <Link href="/products?featured=true">Featured Deals</Link>
+              </Button>
+            </div>
+
+            <div className="mt-10 flex gap-8">
+              {[
+                { value: '10k+', label: 'Products' },
+                { value: '50k+', label: 'Happy Customers' },
+                { value: '4.8★', label: 'Average Rating' },
+              ].map(({ value, label }) => (
+                <div key={label}>
+                  <p className="text-2xl font-bold">{value}</p>
+                  <p className="text-sm text-blue-200">{label}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Right side decorative grid */}
+          <div className="hidden lg:grid grid-cols-2 gap-3 opacity-90">
+            {[
+              { bg: 'bg-white/20', emoji: '💻', label: 'Electronics' },
+              { bg: 'bg-yellow-400/30', emoji: '👕', label: 'Clothing' },
+              { bg: 'bg-blue-400/30', emoji: '🏡', label: 'Home & Garden' },
+              { bg: 'bg-white/20', emoji: '⚽', label: 'Sports' },
+            ].map(({ bg, emoji, label }) => (
+              <div key={label} className={`${bg} flex flex-col items-center justify-center gap-2 rounded-2xl py-8 backdrop-blur-sm`}>
+                <span className="text-4xl">{emoji}</span>
+                <span className="text-sm font-medium text-white/90">{label}</span>
+              </div>
+            ))}
           </div>
         </div>
       </div>
-      {/* Decorative circles */}
       <div className="absolute -right-20 -top-20 h-80 w-80 rounded-full bg-white/5" />
       <div className="absolute -bottom-10 right-40 h-60 w-60 rounded-full bg-white/5" />
     </section>
@@ -69,7 +126,10 @@ function CategoriesSection() {
     <section className="py-16">
       <div className="container">
         <div className="mb-8 flex items-center justify-between">
-          <h2 className="text-2xl font-bold">Shop by Category</h2>
+          <div>
+            <h2 className="text-2xl font-bold">Shop by Category</h2>
+            <p className="text-sm text-muted-foreground">Browse our curated collections</p>
+          </div>
           <Link href="/products" className="text-sm font-medium text-primary hover:underline flex items-center gap-1">
             All Products <ArrowRight className="h-3 w-3" />
           </Link>
@@ -83,14 +143,37 @@ function CategoriesSection() {
                 <Link
                   key={cat.id}
                   href={`/products?category=${cat.slug}`}
-                  className="group flex aspect-square flex-col items-center justify-center gap-2 rounded-xl border bg-white shadow-sm transition-shadow hover:shadow-md"
+                  className="group flex aspect-square flex-col items-center justify-center gap-3 rounded-xl border bg-white shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5"
                 >
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-2xl transition-transform group-hover:scale-110">
-                    {cat.name.charAt(0)}
+                  <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-3xl transition-transform group-hover:scale-110">
+                    {getCategoryEmoji(cat.slug, cat.name)}
                   </div>
-                  <span className="text-sm font-medium text-center px-2">{cat.name}</span>
+                  <span className="text-sm font-medium text-center px-2 leading-tight">{cat.name}</span>
                 </Link>
               ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function PromoBanner() {
+  return (
+    <section className="py-8">
+      <div className="container">
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-orange-500 to-pink-600 px-8 py-10 text-white">
+          <div className="relative z-10 flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-widest text-orange-100">Limited Time Offer</p>
+              <h3 className="mt-1 text-2xl font-bold">Get 10% off your first order</h3>
+              <p className="mt-1 text-orange-100">Use code <span className="font-mono font-bold text-white bg-white/20 px-2 py-0.5 rounded">WELCOME10</span> at checkout</p>
+            </div>
+            <Button asChild size="lg" className="shrink-0 bg-white text-orange-600 hover:bg-white/90">
+              <Link href="/products">Claim Offer <ArrowRight className="ml-2 h-4 w-4" /></Link>
+            </Button>
+          </div>
+          <div className="absolute -right-8 -top-8 h-40 w-40 rounded-full bg-white/10" />
+          <div className="absolute -bottom-12 right-32 h-48 w-48 rounded-full bg-white/10" />
         </div>
       </div>
     </section>
@@ -107,7 +190,7 @@ function FeaturedProducts() {
         <div className="mb-8 flex items-center justify-between">
           <div>
             <h2 className="text-2xl font-bold">Featured Products</h2>
-            <p className="text-muted-foreground">Handpicked for you</p>
+            <p className="text-sm text-muted-foreground">Handpicked for you</p>
           </div>
           <Link href="/products?featured=true" className="text-sm font-medium text-primary hover:underline flex items-center gap-1">
             View All <ArrowRight className="h-3 w-3" />
@@ -138,13 +221,54 @@ function FeaturedProducts() {
   )
 }
 
+function NewArrivals() {
+  const { data, isLoading } = useProducts({ sort: 'latest', per_page: 4 })
+  const products = data?.data ?? []
+
+  return (
+    <section className="py-16">
+      <div className="container">
+        <div className="mb-8 flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold">New Arrivals</h2>
+            <p className="text-sm text-muted-foreground">Just added to the store</p>
+          </div>
+          <Link href="/products?sort=latest" className="text-sm font-medium text-primary hover:underline flex items-center gap-1">
+            See All <ArrowRight className="h-3 w-3" />
+          </Link>
+        </div>
+
+        {isLoading ? (
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="rounded-lg border bg-white p-4 space-y-3">
+                <Skeleton className="aspect-square rounded-md" />
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-4 w-1/2" />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+            {products.map((product) => (
+              <ProductCard key={product.id} product={product} />
+            ))}
+          </div>
+        )}
+      </div>
+    </section>
+  )
+}
+
 export default function HomePage() {
   return (
     <>
       <HeroSection />
       <FeaturesSection />
       <CategoriesSection />
+      <PromoBanner />
       <FeaturedProducts />
+      <NewArrivals />
     </>
   )
 }

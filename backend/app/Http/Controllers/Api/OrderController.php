@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Order\PlaceOrderRequest;
 use App\Http\Resources\OrderResource;
+use App\Mail\OrderConfirmation;
 use App\Models\Address;
 use App\Models\CartItem;
 use App\Models\Coupon;
@@ -12,6 +13,7 @@ use App\Models\Order;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 use Stripe\StripeClient;
 
 class OrderController extends Controller
@@ -134,8 +136,12 @@ class OrderController extends Controller
             return $order;
         });
 
+        $order->load(['items', 'coupon', 'user']);
+
+        Mail::to($user->email)->queue(new OrderConfirmation($order));
+
         return response()->json([
-            'data'    => new OrderResource($order->load(['items', 'coupon'])),
+            'data'    => new OrderResource($order),
             'message' => 'Order placed successfully.',
         ], 201);
     }

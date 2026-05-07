@@ -73,8 +73,7 @@ export default function CheckoutPage() {
       { address_id: selectedAddressId, payment_method: paymentMethod, coupon_code: couponCode || undefined },
       {
         onSuccess: (data) => {
-          toast({ title: 'Order placed!', description: `Order #${data.data.id} confirmed.` })
-          router.push(`/orders/${data.data.id}`)
+          router.push(`/orders/confirmation?id=${data.data.id}`)
         },
         onError: (err) => toast({ title: 'Error', description: err.message, variant: 'destructive' }),
       }
