@@ -33,6 +33,17 @@ export function ProductDetailContent() {
   const router = useRouter()
 
   const queryClient = useQueryClient()
+  const product = data?.data
+  const { add: addRecentlyViewed } = useRecentlyViewed()
+
+  const [selectedImage, setSelectedImage] = useState(0)
+  const [selectedAttribute, setSelectedAttribute] = useState<ProductAttribute | null>(null)
+  const [quantity, setQuantity] = useState(1)
+  const [reviewRating, setReviewRating] = useState(0)
+  const [reviewHover, setReviewHover] = useState(0)
+  const [reviewTitle, setReviewTitle] = useState('')
+  const [reviewBody, setReviewBody] = useState('')
+
   useEffect(() => {
     if (!product) return
     addRecentlyViewed({
@@ -45,16 +56,6 @@ export function ProductDetailContent() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [product?.id])
 
-  const [selectedImage, setSelectedImage] = useState(0)
-  const [selectedAttribute, setSelectedAttribute] = useState<ProductAttribute | null>(null)
-  const [quantity, setQuantity] = useState(1)
-  const [reviewRating, setReviewRating] = useState(0)
-  const [reviewHover, setReviewHover] = useState(0)
-  const [reviewTitle, setReviewTitle] = useState('')
-  const [reviewBody, setReviewBody] = useState('')
-
-  const product = data?.data
-  const { add: addRecentlyViewed } = useRecentlyViewed()
   const { data: reviewsData } = useProductReviews(product?.id)
   const { data: relatedData } = useProducts({
     category: product?.category?.slug,
