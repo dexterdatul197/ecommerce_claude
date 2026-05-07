@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Pencil, Trash2, Search } from 'lucide-react'
+import { Plus, Pencil, Trash2, Search, Upload, X, ImageIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -15,7 +15,7 @@ import { formatCurrency, getStatusColor } from '@/lib/utils'
 import { useToast } from '@/components/ui/use-toast'
 import { useCategories } from '@/hooks/useProducts'
 import api from '@/lib/api'
-import type { Product } from '@/types'
+import type { Product, ProductImage } from '@/types'
 
 type ProductForm = {
   name: string; description: string; short_description: string; price: string
@@ -36,6 +36,7 @@ export default function AdminProductsPage() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<Product | null>(null)
   const [form, setForm] = useState<ProductForm>(DEFAULT_FORM)
+  const [productImages, setProductImages] = useState<ProductImage[]>([])
 
   const { data, isLoading } = useQuery<{ data: Product[]; meta: { total: number; last_page: number } }>({
     queryKey: ['admin', 'products', search, page],
@@ -50,12 +51,21 @@ export default function AdminProductsPage() {
       editing
         ? api.put(`/admin/products/${editing.id}`, payload)
         : api.post('/admin/products', payload),
-    onSuccess: () => {
+    onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'products'] })
-      setDialogOpen(false)
-      setEditing(null)
-      setForm(DEFAULT_FORM)
-      toast({ title: editing ? 'Product updated.' : 'Product created.' })
+      if (!editing) {
+        // Switch to edit mode so images can be added
+        const created: Product = res.data.data
+        setEditing(created)
+        setProductImages(created.images ?? [])
+        toast({ title: 'Product created. You can now add images.' })
+      } else {
+        setDialogOpen(false)
+        setEditing(null)
+        setForm(DEFAULT_FORM)
+        setProductImages([])
+        toast({ title: 'Product updated.' })
+      }
     },
     onError: (err) => toast({ title: 'Error', description: err.message, variant: 'destructive' }),
   })
@@ -65,8 +75,37 @@ export default function AdminProductsPage() {
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['admin', 'products'] }); toast({ title: 'Product deleted.' }) },
   })
 
+  const uploadImages = useMutation({
+    mutationFn: ({ id, files }: { id: number; files: File[] }) => {
+      const formData = new FormData()
+      files.forEach(f => formData.append('images[]', f))
+      return api.post(`/admin/products/${id}/images`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+    },
+    onSuccess: (res) => {
+      const newImages: ProductImage[] = res.data.data
+      setProductImages(prev => [...prev, ...newImages])
+      queryClient.invalidateQueries({ queryKey: ['admin', 'products'] })
+      toast({ title: `${newImages.length} image(s) uploaded.` })
+    },
+    onError: (err) => toast({ title: 'Upload failed', description: err.message, variant: 'destructive' }),
+  })
+
+  const removeImage = useMutation({
+    mutationFn: ({ productId, imageId }: { productId: number; imageId: number }) =>
+      api.delete(`/admin/products/${productId}/images/${imageId}`),
+    onSuccess: (_, { imageId }) => {
+      setProductImages(prev => prev.filter(img => img.id !== imageId))
+      queryClient.invalidateQueries({ queryKey: ['admin', 'products'] })
+      toast({ title: 'Image deleted.' })
+    },
+    onError: (err) => toast({ title: 'Error', description: err.message, variant: 'destructive' }),
+  })
+
   function openEdit(product: Product) {
     setEditing(product)
+    setProductImages(product.images ?? [])
     setForm({
       name: product.name,
       description: product.description ?? '',
@@ -85,6 +124,7 @@ export default function AdminProductsPage() {
   function openCreate() {
     setEditing(null)
     setForm(DEFAULT_FORM)
+    setProductImages([])
     setDialogOpen(true)
   }
 
@@ -113,7 +153,7 @@ export default function AdminProductsPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
+                <TableHead>Product</TableHead>
                 <TableHead>SKU</TableHead>
                 <TableHead>Price</TableHead>
                 <TableHead>Stock</TableHead>
@@ -129,7 +169,18 @@ export default function AdminProductsPage() {
                   ))
                 : products.map((p) => (
                   <TableRow key={p.id}>
-                    <TableCell className="font-medium">{p.name}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        {p.images?.[0] ? (
+                          <img src={p.images[0].url} alt={p.name} className="h-10 w-10 rounded object-cover border flex-shrink-0" />
+                        ) : (
+                          <div className="h-10 w-10 rounded border bg-muted flex items-center justify-center flex-shrink-0">
+                            <ImageIcon className="h-4 w-4 text-muted-foreground" />
+                          </div>
+                        )}
+                        <span className="font-medium">{p.name}</span>
+                      </div>
+                    </TableCell>
                     <TableCell className="text-muted-foreground">{p.sku}</TableCell>
                     <TableCell>{formatCurrency(p.price)}</TableCell>
                     <TableCell>
@@ -160,8 +211,10 @@ export default function AdminProductsPage() {
         </div>
       )}
 
-      {/* Product form dialog */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Dialog open={dialogOpen} onOpenChange={(open) => {
+        if (!open) { setEditing(null); setForm(DEFAULT_FORM); setProductImages([]) }
+        setDialogOpen(open)
+      }}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editing ? 'Edit Product' : 'Add Product'}</DialogTitle>
@@ -227,6 +280,52 @@ export default function AdminProductsPage() {
               <Label>Description</Label>
               <Textarea value={form.description} onChange={update('description')} rows={4} />
             </div>
+
+            {/* Images — only available after product exists */}
+            {editing && (
+              <div className="col-span-2 space-y-2">
+                <Label>Images</Label>
+                <div className="flex flex-wrap gap-2">
+                  {productImages.map(img => (
+                    <div key={img.id} className="relative group">
+                      <img src={img.url} alt={img.alt ?? ''} className="h-20 w-20 rounded object-cover border" />
+                      <button
+                        type="button"
+                        onClick={() => removeImage.mutate({ productId: editing.id, imageId: img.id })}
+                        className="absolute -top-1.5 -right-1.5 hidden group-hover:flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-white shadow"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                  <label className="flex h-20 w-20 cursor-pointer flex-col items-center justify-center rounded border-2 border-dashed border-muted-foreground/30 hover:border-primary/60 transition-colors">
+                    {uploadImages.isPending ? (
+                      <span className="text-xs text-muted-foreground">Uploading…</span>
+                    ) : (
+                      <>
+                        <Upload className="h-5 w-5 text-muted-foreground" />
+                        <span className="mt-1 text-xs text-muted-foreground">Add</span>
+                      </>
+                    )}
+                    <input
+                      type="file"
+                      multiple
+                      accept="image/*"
+                      className="hidden"
+                      disabled={uploadImages.isPending}
+                      onChange={(e) => {
+                        const files = Array.from(e.target.files ?? [])
+                        if (files.length > 0) {
+                          uploadImages.mutate({ id: editing.id, files })
+                          e.target.value = ''
+                        }
+                      }}
+                    />
+                  </label>
+                </div>
+                <p className="text-xs text-muted-foreground">Supported: JPG, PNG, WebP — max 5 MB each</p>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>

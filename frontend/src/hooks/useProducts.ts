@@ -1,7 +1,7 @@
 'use client'
 import { useQuery } from '@tanstack/react-query'
 import api from '@/lib/api'
-import type { Product, Category, ApiResponse, ApiMeta } from '@/types'
+import type { Product, Category, Review, ApiResponse, ApiMeta } from '@/types'
 
 interface ProductFilters {
   search?: string
@@ -44,5 +44,13 @@ export function useSearchProducts(query: string) {
     queryFn: () =>
       api.get('/products/search', { params: { q: query } }).then((r) => r.data),
     enabled: query.length >= 2,
+  })
+}
+
+export function useProductReviews(productId: number | undefined) {
+  return useQuery<{ data: Review[]; summary: { average: number; total: number }; meta: ApiMeta }>({
+    queryKey: ['reviews', productId],
+    queryFn: () => api.get(`/products/${productId}/reviews`).then((r) => r.data),
+    enabled: !!productId,
   })
 }

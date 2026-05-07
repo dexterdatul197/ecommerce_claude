@@ -44,12 +44,12 @@ class ReviewController extends Controller
 
         $hasPurchased = $request->user()
             ->orders()
-            ->whereIn('status', ['delivered'])
+            ->whereNotIn('status', ['cancelled'])
             ->whereHas('items', fn($q) => $q->where('product_id', $id))
             ->exists();
 
         if (! $hasPurchased) {
-            return response()->json(['message' => 'You can only review products you have purchased.'], 403);
+            return response()->json(['message' => 'You can only review products you have purchased and received.'], 403);
         }
 
         $alreadyReviewed = Review::where('user_id', $request->user()->id)

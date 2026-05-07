@@ -4,9 +4,16 @@ namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Facades\Storage;
 
 class ProductListResource extends JsonResource
 {
+    private function resolveImageUrl(?string $url): ?string
+    {
+        if ($url === null) return null;
+        return str_starts_with($url, 'http') ? $url : Storage::disk('public')->url($url);
+    }
+
     public function toArray(Request $request): array
     {
         return [
@@ -23,7 +30,7 @@ class ProductListResource extends JsonResource
             'average_rating'    => $this->average_rating,
             'reviews_count'     => $this->reviews_count,
             'category'          => new CategoryResource($this->whenLoaded('category')),
-            'primary_image'     => $this->images->first()?->url,
+            'primary_image'     => $this->resolveImageUrl($this->images->first()?->url),
         ];
     }
 }

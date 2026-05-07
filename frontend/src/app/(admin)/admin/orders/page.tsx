@@ -72,7 +72,7 @@ export default function AdminOrdersPage() {
                 ))
               ) : orders.map((order) => (
                 <TableRow key={order.id}>
-                  <TableCell className="font-medium">#{order.id}</TableCell>
+                  <TableCell className="font-medium">{order.order_number ?? `#${order.id}`}</TableCell>
                   <TableCell>{order.shipping_name}</TableCell>
                   <TableCell>{formatDate(order.created_at)}</TableCell>
                   <TableCell>{formatCurrency(order.total)}</TableCell>
@@ -107,7 +107,7 @@ export default function AdminOrdersPage() {
       {/* Order detail dialog */}
       <Dialog open={!!selectedOrder} onOpenChange={() => setSelectedOrder(null)}>
         <DialogContent className="max-w-lg">
-          <DialogHeader><DialogTitle>Order #{selectedOrder?.id}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{selectedOrder?.order_number ?? `Order #${selectedOrder?.id}`}</DialogTitle></DialogHeader>
           {selectedOrder && (
             <div className="space-y-3 text-sm">
               <div className="grid grid-cols-2 gap-2">

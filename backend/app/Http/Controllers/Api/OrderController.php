@@ -112,7 +112,9 @@ class OrderController extends Controller
                         'name'          => $item->product->name,
                         'sku'           => $item->product->sku,
                         'price'         => $item->product->price,
-                        'primary_image' => $item->product->images->first()?->url,
+                        'primary_image' => ($u = $item->product->images->first()?->url)
+                            ? (str_starts_with($u, 'http') ? $u : \Illuminate\Support\Facades\Storage::disk('public')->url($u))
+                            : null,
                     ],
                 ]);
 
@@ -124,6 +126,10 @@ class OrderController extends Controller
             }
 
             CartItem::where('user_id', $user->id)->delete();
+
+            $order->update([
+                'order_number' => 'ORD-'.now()->format('Ymd').'-'.str_pad($order->id, 5, '0', STR_PAD_LEFT),
+            ]);
 
             return $order;
         });

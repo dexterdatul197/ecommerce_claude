@@ -100,7 +100,7 @@ class ProductController extends Controller
         foreach ($request->file('images') as $index => $file) {
             $path = $file->store("products/{$id}", 'public');
             $image = $product->images()->create([
-                'url'        => Storage::disk('public')->url($path),
+                'url'        => $path,
                 'alt'        => $product->name,
                 'sort_order' => $product->images()->max('sort_order') + $index + 1,
             ]);

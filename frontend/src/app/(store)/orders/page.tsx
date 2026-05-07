@@ -36,7 +36,7 @@ export default function OrdersPage() {
                       <Package className="h-6 w-6 text-primary" />
                     </div>
                     <div>
-                      <p className="font-semibold">Order #{order.id}</p>
+                      <p className="font-semibold">{order.order_number ?? `Order #${order.id}`}</p>
                       <p className="text-sm text-muted-foreground">{formatDate(order.created_at)}</p>
                       <p className="text-sm text-muted-foreground">{order.items.length} item(s)</p>
                     </div>

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\PasswordResetController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\CartController;
@@ -12,8 +13,10 @@ use App\Http\Controllers\Api\Admin;
 use Illuminate\Support\Facades\Route;
 
 // ── Public ────────────────────────────────────────────────
-Route::post('/auth/register', [AuthController::class, 'register']);
-Route::post('/auth/login',    [AuthController::class, 'login']);
+Route::post('/auth/register',         [AuthController::class, 'register']);
+Route::post('/auth/login',            [AuthController::class, 'login']);
+Route::post('/auth/forgot-password',  [PasswordResetController::class, 'sendResetLink']);
+Route::post('/auth/reset-password',   [PasswordResetController::class, 'resetPassword']);
 
 Route::get('/categories',        [CategoryController::class, 'index']);
 Route::get('/categories/{slug}', [CategoryController::class, 'show']);

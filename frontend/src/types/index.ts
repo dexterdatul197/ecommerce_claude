@@ -93,6 +93,7 @@ export interface OrderItem {
 
 export interface Order {
   id: number
+  order_number?: string
   status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled'
   subtotal: number
   discount_amount: number

@@ -52,7 +52,7 @@ export default function OrderDetailPage() {
 
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Order #{order.id}</h1>
+          <h1 className="text-2xl font-bold">{order.order_number ?? `Order #${order.id}`}</h1>
           <p className="text-sm text-muted-foreground">Placed on {formatDate(order.created_at)}</p>
         </div>
         <div className="flex gap-2">

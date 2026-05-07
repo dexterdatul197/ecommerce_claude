@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, Fragment } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { SlidersHorizontal, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -36,7 +36,7 @@ export default function ProductsPage() {
     const params = new URLSearchParams(searchParams.toString())
     if (value) params.set(key, value)
     else params.delete(key)
-    params.delete('page')
+    if (key !== 'page') params.delete('page')
     router.push(`/products?${params.toString()}`)
   }
 
@@ -67,8 +67,8 @@ export default function ProductsPage() {
           <SelectContent>
             <SelectItem value="all">All Categories</SelectItem>
             {categories.map((cat) => (
-              <>
-                <SelectItem key={cat.id} value={cat.slug} className="font-medium">
+              <Fragment key={cat.id}>
+                <SelectItem value={cat.slug} className="font-medium">
                   {cat.name}
                 </SelectItem>
                 {cat.children?.map((child) => (
@@ -76,7 +76,7 @@ export default function ProductsPage() {
                     ↳ {child.name}
                   </SelectItem>
                 ))}
-              </>
+              </Fragment>
             ))}
           </SelectContent>
         </Select>
